@@ -7,26 +7,24 @@ import threading
 from telebot import types
 from datetime import datetime
 
-try:
-    config = configparser.ConfigParser()
-    config.read('config.ini')
 
-    bot = telebot.TeleBot(config['DATABASE']['token'])
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-    server = config['DATABASE']['server']
-    database = config['DATABASE']['database']
-    username = config['DATABASE']['username']
-    password = config['DATABASE']['password']
+bot = telebot.TeleBot(config['DATABASE']['token'])
 
-    connection_string = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-    conn = pyodbc.connect(connection_string)
-    cursor = conn.cursor()
-    db_lock = threading.Lock()
-    user_data = {}
-    user_steps = {}
-    admins = [601442777, 7178651151, 5786418791] # Березной, Смаль, Афонькина
-except Exception as e:
-    print(e)
+server = config['DATABASE']['server']
+database = config['DATABASE']['database']
+username = config['DATABASE']['username']
+password = config['DATABASE']['password']
+
+connection_string = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+conn = pyodbc.connect(connection_string)
+cursor = conn.cursor()
+db_lock = threading.Lock()
+user_data = {}
+user_steps = {}
+admins = [601442777, 7178651151, 5786418791] # Березной, Смаль, Афонькина
 
 
 # Функция для создания таблицы, если она не существует
