@@ -1,0 +1,2 @@
+pyodbc==5.1.0
+telebot==4.22.1

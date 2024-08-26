@@ -1,6 +1,7 @@
 import telebot
 import pyodbc
 import re
+import dic
 import configparser
 import threading
 from telebot import types
