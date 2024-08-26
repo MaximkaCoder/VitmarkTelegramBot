@@ -293,7 +293,7 @@ def get_departure_time(message):
 
 def ask_hybrid_quantity(call):
     hybrid = user_data[call.message.chat.id]['Гибриды'][-1]
-    bot.send_message(call.message.chat.id, f"Введите количество (в тоннах) для {hybrid}:")
+    bot.send_message(call.message.chat.id, f"Введите количество (в килограммах) для {hybrid}:")
     bot.register_next_step_handler(call.message, save_hybrid_quantity)
 
 def save_hybrid_quantity(message):
@@ -428,7 +428,7 @@ def confirm_data(message):
     except KeyError:
         print("key error")
 
-    hybrid_info = "\n".join([f"{h}: {q} тонн" for h, q in
+    hybrid_info = "\n".join([f"{h}: {q} килограмм" for h, q in
                              zip(user_data[message.chat.id]['Гибриды'], user_data[message.chat.id]['Количество'])])
 
 
