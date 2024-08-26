@@ -15,7 +15,7 @@ def get_data_from_db(conn):
         hybrid, 
         quantity,
         owner
-    FROM Data  -- Замените на ваше название таблицы
+    FROM Data
     """
 
     # Получаем данные в виде DataFrame
