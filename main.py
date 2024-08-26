@@ -6,6 +6,7 @@ import configparser
 import threading
 from telebot import types
 from datetime import datetime
+import createExcel
 
 
 config = configparser.ConfigParser()
@@ -47,6 +48,7 @@ def create_table_if_not_exists():
             hybrid NVARCHAR(20),
             quantity INT,
             processed BIT,
+            owner NVARCHAR(50),
             PRIMARY KEY (ttn, ttn_date, field_code, hybrid_code)
         );
     END
@@ -108,6 +110,11 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
         markup.add(add_record_button)
+
+        if user_id in admins:
+            add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+            markup.add(add_record_button)
+
         bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
 
 
@@ -127,6 +134,11 @@ def handle_request(call):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
             markup.add(add_record_button)
+
+            if user_id in admins:
+                add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+                markup.add(add_record_button)
+
             bot.send_message(call.message.chat.id, "Пользователь добавлен.")
             bot.send_message(user_id, "Вам предоставлен доступ!", reply_markup=markup)
     elif call.data.startswith("reject_"):
@@ -146,6 +158,22 @@ def handle_add_record(message):
     bot.register_next_step_handler(message, get_ttn)
 
 
+@bot.message_handler(func=lambda message: message.text == "СГЕНЕРИРОВАТЬ ОТЧЁТ")
+def generate_excel(message):
+    try:
+        df = createExcel.get_data_from_db(conn)  # Получаем данные из базы данных
+        excel_file = createExcel.create_excel(df)  # Создаем Excel файл
+
+        bot.send_document(
+            message.chat.id,
+            excel_file,
+            caption="Ваши данные в формате Excel",
+            visible_file_name="report.xlsx"
+        )
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Произошла ошибка: {e}")
+
+
 @bot.message_handler(func=lambda message: message.text == "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ")
 def reset(message):
     if message.chat.id in user_data:
@@ -155,6 +183,11 @@ def reset(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
     markup.add(add_record_button)
+
+    if message.chat.id in admins:
+        add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+        markup.add(add_record_button)
+
     bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
 
 
@@ -470,6 +503,11 @@ def callback_delete_confirm(call):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
         markup.add(add_record_button)
+
+        if call.message.chat.id in admins:
+            add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+            markup.add(add_record_button)
+
         bot.send_message(call.message.chat.id, "Запись удалена.", reply_markup=markup)
     elif call.data == "delete_confirm_no":
         confirm_data(call.message)
@@ -500,12 +538,12 @@ def save_data_to_db(data, message):
     # Переводим данные в строку для упрощения сравнения
     data_tuple = (
         data['ТТН'], ttn_date, start_time, end_time, departure_time,
-        data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано']
+        data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано'], dic.users_data.get(message.chat.id)
     )
 
     cursor.execute(
         "SELECT 1 FROM Data WHERE ttn = ? AND ttn_date = ? AND start_time = ? AND end_time = ? AND departure_time = ? "
-        "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ?",
+        "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ? AND owner = ?",
         data_tuple
     )
     existing_record = cursor.fetchone()
@@ -513,6 +551,10 @@ def save_data_to_db(data, message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
     markup.add(add_record_button)
+
+    if message.chat.id in admins:
+        add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+        markup.add(add_record_button)
 
     if existing_record:
         bot.send_message(message.chat.id,"Запись уже существует в базе данных.")
@@ -523,10 +565,11 @@ def save_data_to_db(data, message):
                 hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
 
                 cursor.execute(
-                    "INSERT INTO Data (ttn, ttn_date, start_time, end_time, departure_time, field_code, field, hybrid_code, hybrid, quantity, processed) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO Data (ttn, ttn_date, start_time, end_time, departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     data['ТТН'], ttn_date, start_time, end_time, departure_time,
-                    margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано']
+                    margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
+                    dic.users_data.get(message.chat.id)
                 )
             conn.commit()
 

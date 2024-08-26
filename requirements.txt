@@ -1,2 +1,3 @@
 pyodbc==5.1.0
-telebot==4.22.1
+pytelegrambotapi==4.22.1
+pandas==2.2.2
