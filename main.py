@@ -539,12 +539,12 @@ def save_data_to_db(data, message):
     # Переводим данные в строку для упрощения сравнения
     data_tuple = (
         data['ТТН'], ttn_date, start_time, end_time, departure_time,
-        data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано'], dic.users_data.get(message.chat.id)
+        data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано']
     )
 
     cursor.execute(
         "SELECT 1 FROM Data WHERE ttn = ? AND ttn_date = ? AND start_time = ? AND end_time = ? AND departure_time = ? "
-        "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ? AND owner = ?",
+        "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ?",
         data_tuple
     )
     existing_record = cursor.fetchone()
