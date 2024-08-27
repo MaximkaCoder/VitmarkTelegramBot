@@ -154,7 +154,7 @@ def handle_add_record(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     add_record_button = types.KeyboardButton("ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ")
     markup.add(add_record_button)
-    bot.send_message(message.chat.id, "Введите ТТН (например 1111):", reply_markup=markup)
+    bot.send_message(message.chat.id, "Введите ТТН (например 111 или 1111):", reply_markup=markup)
     bot.register_next_step_handler(message, get_ttn)
 
 
@@ -244,7 +244,7 @@ def ask_for_date(message, first: int):
 
 def get_ttn(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
-        if len(message.text) == 4 and message.text.isdigit():
+        if len(message.text) in [3, 4] and message.text.isdigit():
             user_data[message.chat.id]['ТТН'] = "ВАВІ" + message.text
             ask_for_date(message, 1)
         else:
@@ -252,6 +252,7 @@ def get_ttn(message):
             handle_add_record(message)
     else:
         reset(message)
+
 
 
 def get_date(message, first):
