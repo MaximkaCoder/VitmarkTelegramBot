@@ -39,6 +39,9 @@ def create_table_if_not_exists():
         CREATE TABLE Data (
             ttn NVARCHAR(10),
             ttn_date DATE,
+            car NVARCHAR(20),
+            car_number NVARCHAR(8),
+            trailer_number NVARCHAR(20),
             start_time DATETIME,
             end_time DATETIME,
             departure_time DATETIME,
@@ -118,33 +121,6 @@ def start(message):
         bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("accept_") or call.data.startswith("reject_"))
-def handle_request(call):
-    user_id = int(call.data.split("_")[1])
-    cursor.execute("SELECT * FROM Users WHERE userID = ?", (user_id,))
-    user = cursor.fetchone()
-
-    if call.data.startswith("accept_"):
-        if user:
-            bot.send_message(call.message.chat.id, "Этот пользователь уже добавлен.")
-        else:
-            cursor.execute("INSERT INTO Users (userID) VALUES (?)",
-                           user_id)
-            conn.commit()
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
-            markup.add(add_record_button)
-
-            if user_id in admins:
-                add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
-                markup.add(add_record_button)
-
-            bot.send_message(call.message.chat.id, "Пользователь добавлен.")
-            bot.send_message(user_id, "Вам предоставлен доступ!", reply_markup=markup)
-    elif call.data.startswith("reject_"):
-        bot.send_message(call.message.chat.id, "Запрос отклонен.")
-
-
 @bot.message_handler(func=lambda message: message.text == "ДОБАВИТЬ ЗАПИСЬ")
 def handle_add_record(message):
     create_table_if_not_exists()
@@ -191,40 +167,48 @@ def reset(message):
     bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("date_"))
-def check_date_choice(call):
-    if call.data == "date_yes_1":
-        if not user_steps[call.message.chat.id]['step']:
-            user_steps[call.message.chat.id]['step'].append(1)
-            print(user_steps[call.message.chat.id]['step'])
-            user_data[call.message.chat.id]['Дата1'] = datetime.now().strftime('%d.%m.%Y')
-            bot.send_message(call.message.chat.id, f"Дата начала погрузки - {user_data[call.message.chat.id]['Дата1']}.")
-            bot.send_message(call.message.chat.id, "Введите время начала погрузки (пример: 9:30):")
-            bot.register_next_step_handler(call.message, get_loading_start_time)
-    elif call.data == "date_no_1":
-        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
-        user_steps[call.message.chat.id]['step'].append(1)
-        bot.register_next_step_handler(call.message, get_date, 1)
-    elif call.data == "date_yes_2" and check_steps(call.message, 2):
-        user_steps[call.message.chat.id]['step'].append(2)
-        user_data[call.message.chat.id]['Дата2'] = datetime.now().strftime('%d.%m.%Y')
-        bot.send_message(call.message.chat.id, f"Дата конца погрузки {user_data[call.message.chat.id]['Дата2']}.")
-        bot.send_message(call.message.chat.id, "Введите время конца погрузки (пример: 9:30):")
-        bot.register_next_step_handler(call.message, get_loading_end_time)
-    elif call.data == "date_no_2":
-        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
-        user_steps[call.message.chat.id]['step'].append(2)
-        bot.register_next_step_handler(call.message, get_date, 2)
-    elif call.data == "date_yes_3" and check_steps(call.message, 3):
-        user_steps[call.message.chat.id]['step'].append(3)
-        user_data[call.message.chat.id]['Дата3'] = datetime.now().strftime('%d.%m.%Y')
-        bot.send_message(call.message.chat.id, f"Дата отгрузки - {user_data[call.message.chat.id]['Дата3']}.")
-        bot.send_message(call.message.chat.id, "Введите время отправки (пример: 9:30):")
-        bot.register_next_step_handler(call.message, get_departure_time)
-    elif call.data == "date_no_3":
-        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
-        user_steps[call.message.chat.id]['step'].append(3)
-        bot.register_next_step_handler(call.message, get_date, 3)
+def get_ttn(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        if len(message.text) in [3, 4] and message.text.isdigit():
+            cursor.execute("SELECT 1 FROM Data WHERE ttn = ?", message.text)
+            existing_ttn = cursor.fetchone()
+
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
+            markup.add(add_record_button)
+
+            if existing_ttn:
+                bot.send_message(message.chat.id, "Запись с таким ТТН уже есть в базе!", reply_markup=markup)
+            else:
+                user_data[message.chat.id]['ТТН'] = message.text
+                get_car_name(message)
+        else:
+            bot.send_message(message.chat.id, "Неверный формат ТТН!")
+            handle_add_record(message)
+    else:
+        reset(message)
+
+
+def get_car_name(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        user_data[message.chat.id]['Авто'] = []
+        bot.send_message(message.chat.id, "Выберите марку машины:", reply_markup=create_car_buttons())
+    else:
+        reset(message)
+
+
+def get_car_number(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        car_number = message.text.upper()
+
+        if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', car_number):
+            user_data[message.chat.id]['CarNumber'] = car_number
+            bot.send_message(message.chat.id, "Есть ли прицеп?", reply_markup=create_car_num_buttons())
+        else:
+            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
+            bot.register_next_step_handler(message, get_car_number)
+    else:
+        reset(message)
 
 
 def ask_for_date(message, first: int):
@@ -242,16 +226,15 @@ def ask_for_date(message, first: int):
     bot.send_message(message.chat.id, f"Использовать текущую дату ({today})?", reply_markup=markup)
 
 
-def get_ttn(message):
-    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
-        if len(message.text) in [3, 4] and message.text.isdigit():
-            user_data[message.chat.id]['ТТН'] = "ВАВІ" + message.text
-            ask_for_date(message, 1)
-        else:
-            bot.send_message(message.chat.id, "Неверный формат ТТН!")
-            handle_add_record(message)
+def get_trailer_number(message):
+    trailer_number = message.text.upper()
+
+    if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', trailer_number):
+        user_data[message.chat.id]['TrailerNumber'] = trailer_number
+        ask_for_date(message, 1)
     else:
-        reset(message)
+        bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
+        bot.register_next_step_handler(message, get_trailer_number)
 
 
 
@@ -309,6 +292,7 @@ def get_loading_end_time(message):
     else:
         reset(message)
 
+
 def get_departure_time(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         user_data[message.chat.id]['Количество'] = []
@@ -365,16 +349,6 @@ def create_quantity_buttons():
     return markup
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("quantity_"))
-def handle_quantity(call):
-    if check_steps(call.message, 5):
-        user_steps[call.message.chat.id]['step'].append(5)
-        quantity = int(call.data.split("_")[1])
-        user_data[call.message.chat.id]['Количество Гибридов На Поле'] = quantity
-        user_data[call.message.chat.id]['count'] = 0
-        user_data[call.message.chat.id]['Гибриды'] = []
-        hybrids_quantity(call.message)
-
 def hybrids_quantity(message):
     if user_data[message.chat.id]['Количество Гибридов На Поле'] > 0:
         user_data[message.chat.id]['count'] += 1
@@ -410,16 +384,6 @@ def create_hybrid_buttons():
     return markup
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("hybrid_"))
-def handle_hybrid(call):
-    if user_steps[call.message.chat.id]['step']:
-        if user_steps[call.message.chat.id]['step'][-1] == 5:
-            hybrid = call.data.split("_", 1)[1]
-            hybrid = hybrid.replace("(", " (")
-            user_data[call.message.chat.id]['Гибриды'].append(hybrid)
-            ask_hybrid_quantity(call)  # Запрос количества гибрида
-
-
 def create_field_buttons():
     row = []
     markup = types.InlineKeyboardMarkup()
@@ -442,14 +406,161 @@ def create_field_buttons():
     return markup
 
 
+def create_car_buttons():
+    markup = types.InlineKeyboardMarkup()
+
+    row = [
+        types.InlineKeyboardButton("MAN", callback_data=f"car_man"),
+        types.InlineKeyboardButton("КАМАЗ", callback_data=f"car_kamaz"),
+        types.InlineKeyboardButton("DAF", callback_data=f"car_daf")
+    ]
+
+    markup.row(*row)
+
+    row = [
+        types.InlineKeyboardButton("RENAULT", callback_data=f"car_renault"),
+        types.InlineKeyboardButton("VOLVO", callback_data=f"car_volvo"),
+        types.InlineKeyboardButton("SCANIA", callback_data=f"car_scania")
+    ]
+
+    markup.row(*row)
+
+    row = [
+        types.InlineKeyboardButton("MERCEDES", callback_data=f"car_mercedes"),
+        types.InlineKeyboardButton("IVECO", callback_data=f"car_iveco")
+    ]
+
+    markup.row(*row)
+    return markup
+
+
+def create_car_num_buttons():
+    markup = types.InlineKeyboardMarkup()
+
+    row = [
+        types.InlineKeyboardButton("ДА", callback_data=f"trailer_yes"),
+        types.InlineKeyboardButton("НЕТ", callback_data=f"trailer_no")
+    ]
+
+    markup.row(*row)
+    return markup
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("accept_") or call.data.startswith("reject_"))
+def handle_request(call):
+    user_id = int(call.data.split("_")[1])
+    cursor.execute("SELECT * FROM Users WHERE userID = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if call.data.startswith("accept_"):
+        if user:
+            bot.send_message(call.message.chat.id, "Этот пользователь уже добавлен.")
+        else:
+            cursor.execute("INSERT INTO Users (userID) VALUES (?)",
+                           user_id)
+            conn.commit()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
+            markup.add(add_record_button)
+
+            if user_id in admins:
+                add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+                markup.add(add_record_button)
+
+            bot.send_message(call.message.chat.id, "Пользователь добавлен.")
+            bot.send_message(user_id, "Вам предоставлен доступ!", reply_markup=markup)
+    elif call.data.startswith("reject_"):
+        bot.send_message(call.message.chat.id, "Запрос отклонен.")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("car_"))
+def handle_car(call):
+    if not user_steps[call.message.chat.id]['step']:
+        user_steps[call.message.chat.id]['step'].append(1)
+        car = call.data.split("_", 1)[1]
+        user_data[call.message.chat.id]['Авто'] = car.upper()
+        bot.send_message(call.message.chat.id, f"Введите номер автомобиля {user_data[call.message.chat.id]['Авто']}"
+                                               f" в формате ХХ1111ХХ: ")
+        bot.register_next_step_handler(call.message, get_car_number)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("trailer_"))
+def handle_trailer(call):
+    if call.data == "trailer_yes" and check_steps(call.message, 2):
+        user_steps[call.message.chat.id]['step'].append(2)
+        bot.send_message(call.message.chat.id, "Введите номер прицепа в формате ХХ1111ХХ:")
+        bot.register_next_step_handler(call.message, get_trailer_number)
+    elif call.data == "trailer_no" and check_steps(call.message, 2):
+        user_steps[call.message.chat.id]['step'].append(2)
+        user_data[call.message.chat.id]['TrailerNumber'] = "Прицеп отсутствует"
+        ask_for_date(call.message, 1)
+
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("date_"))
+def check_date_choice(call):
+    if call.data == "date_yes_1" and check_steps(call.message, 3):
+        user_steps[call.message.chat.id]['step'].append(3)
+        print(user_steps[call.message.chat.id]['step'])
+        user_data[call.message.chat.id]['Дата1'] = datetime.now().strftime('%d.%m.%Y')
+        bot.send_message(call.message.chat.id, f"Дата начала погрузки - {user_data[call.message.chat.id]['Дата1']}.")
+        bot.send_message(call.message.chat.id, "Введите время начала погрузки (пример: 9:30):")
+        bot.register_next_step_handler(call.message, get_loading_start_time)
+    elif call.data == "date_no_1":
+        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
+        user_steps[call.message.chat.id]['step'].append(3)
+        bot.register_next_step_handler(call.message, get_date, 1)
+    elif call.data == "date_yes_2" and check_steps(call.message, 4):
+        user_steps[call.message.chat.id]['step'].append(4)
+        user_data[call.message.chat.id]['Дата2'] = datetime.now().strftime('%d.%m.%Y')
+        bot.send_message(call.message.chat.id, f"Дата конца погрузки {user_data[call.message.chat.id]['Дата2']}.")
+        bot.send_message(call.message.chat.id, "Введите время конца погрузки (пример: 9:30):")
+        bot.register_next_step_handler(call.message, get_loading_end_time)
+    elif call.data == "date_no_2":
+        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
+        user_steps[call.message.chat.id]['step'].append(4)
+        bot.register_next_step_handler(call.message, get_date, 2)
+    elif call.data == "date_yes_3" and check_steps(call.message, 5):
+        user_steps[call.message.chat.id]['step'].append(5)
+        user_data[call.message.chat.id]['Дата3'] = datetime.now().strftime('%d.%m.%Y')
+        bot.send_message(call.message.chat.id, f"Дата отгрузки - {user_data[call.message.chat.id]['Дата3']}.")
+        bot.send_message(call.message.chat.id, "Введите время отправки (пример: 9:30):")
+        bot.register_next_step_handler(call.message, get_departure_time)
+    elif call.data == "date_no_3":
+        bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
+        user_steps[call.message.chat.id]['step'].append(5)
+        bot.register_next_step_handler(call.message, get_date, 3)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("field_"))
 def handle_field(call):
-    if check_steps(call.message, 4):
-        user_steps[call.message.chat.id]['step'].append(4)
+    if check_steps(call.message, 6):
+        user_steps[call.message.chat.id]['step'].append(6)
         field = call.data.split("_", 1)[1]
         user_data[call.message.chat.id]['Поле'] = "Поле Беляевка " + field
         bot.send_message(call.message.chat.id, f"Введите количество гибридов на {user_data[call.message.chat.id]['Поле']}",
                          reply_markup=create_quantity_buttons())
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("quantity_"))
+def handle_quantity(call):
+    if check_steps(call.message, 7):
+        user_steps[call.message.chat.id]['step'].append(7)
+        quantity = int(call.data.split("_")[1])
+        user_data[call.message.chat.id]['Количество Гибридов На Поле'] = quantity
+        user_data[call.message.chat.id]['count'] = 0
+        user_data[call.message.chat.id]['Гибриды'] = []
+        hybrids_quantity(call.message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("hybrid_"))
+def handle_hybrid(call):
+    if user_steps[call.message.chat.id]['step']:
+        if user_steps[call.message.chat.id]['step'][-1] == 7:
+            hybrid = call.data.split("_", 1)[1]
+            hybrid = hybrid.replace("(", " (")
+            user_data[call.message.chat.id]['Гибриды'].append(hybrid)
+            ask_hybrid_quantity(call)  # Запрос количества гибрида
 
 
 def confirm_data(message):
@@ -462,10 +573,6 @@ def confirm_data(message):
 
     hybrid_info = "\n".join([f"{h}: {q} килограмм" for h, q in
                              zip(user_data[message.chat.id]['Гибриды'], user_data[message.chat.id]['Количество'])])
-
-
-    print(user_data[message.chat.id]['Гибриды'], user_data[message.chat.id]['Количество'])
-
     markup = types.InlineKeyboardMarkup()
     row = [
         types.InlineKeyboardButton("Да", callback_data="confirm_yes"),
@@ -475,6 +582,9 @@ def confirm_data(message):
     bot.send_message(message.chat.id, "Все ли заполнено правильно?\n\n"
                                       f"ТТН: {user_data[message.chat.id]['ТТН']}"
                                       f"\nДата ТТН: {user_data[message.chat.id]['ТТНДата']}"
+                                      f"\nМарка автомобиля: {user_data[message.chat.id]['Авто'].upper()}"
+                                      f"\nНомер автомобиля: {user_data[message.chat.id]['CarNumber']}"
+                                      f"\nНомер прицепа: {user_data[message.chat.id]['TrailerNumber']}"
                                       f"\nНачало погрузки: {user_data[message.chat.id]['НачалоПогрузки']}"
                                       f"\nКонец погрузки: {user_data[message.chat.id]['КонецПогрузки']}"
                                       f"\nВремя отправки: {user_data[message.chat.id]['ВремяОтправки']}"
@@ -514,67 +624,56 @@ def callback_delete_confirm(call):
         confirm_data(call.message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("edit"))
-def callback_edit(call):
-    field = call.data.split("_", 1)[1]
-    bot.send_message(call.message.chat.id, f"Введите новое значение для '{field}':")
-    bot.register_next_step_handler(call.message, update_field, field)
-
-
-def update_field(message, field):
-    if field in ["НачалоПогрузки", "ВремяОтправки", "КонецПогрузки"] and not validate_time(message.text):
-        bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова:")
-        bot.register_next_step_handler(message, update_field, field)
-    else:
-        user_data[message.chat.id][field] = message.text
-        confirm_data(message)
-
-
 def save_data_to_db(data, message):
-    ttn_date = datetime.strptime(data['ТТНДата'], '%d.%m.%Y').strftime('%Y-%m-%d')
-    start_time = datetime.strptime(data['НачалоПогрузки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
-    end_time = datetime.strptime(data['КонецПогрузки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
-    departure_time = datetime.strptime(data['ВремяОтправки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
+    if dic.users_data.get(message.chat.id) is None:
+        bot.send_message(message.chat.id, "У вас нет права на внесение записей в базу!")
+    else:
+        ttn_date = datetime.strptime(data['ТТНДата'], '%d.%m.%Y').strftime('%Y-%m-%d')
+        start_time = datetime.strptime(data['НачалоПогрузки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
+        end_time = datetime.strptime(data['КонецПогрузки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
+        departure_time = datetime.strptime(data['ВремяОтправки'], '%d.%m.%Y %H:%M').strftime('%Y-%m-%d %H:%M:%S')
 
-    # Переводим данные в строку для упрощения сравнения
-    data_tuple = (
-        data['ТТН'], ttn_date, start_time, end_time, departure_time,
-        data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано']
-    )
+        # Переводим данные в строку для упрощения сравнения
+        data_tuple = (
+            data['ТТН'], ttn_date, start_time, end_time, departure_time,
+            data['Поле'], data['Гибриды'][0], data['Количество'][0], data['Обработано']
+        )
 
-    cursor.execute(
-        "SELECT 1 FROM Data WHERE ttn = ? AND ttn_date = ? AND start_time = ? AND end_time = ? AND departure_time = ? "
-        "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ?",
-        data_tuple
-    )
-    existing_record = cursor.fetchone()
+        cursor.execute(
+            "SELECT 1 FROM Data WHERE ttn = ? AND ttn_date = ? AND start_time = ? AND end_time = ? AND departure_time = ? "
+            "AND field = ? AND hybrid = ? AND quantity = ? AND processed = ?",
+            data_tuple
+        )
+        existing_record = cursor.fetchone()
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
-    markup.add(add_record_button)
-
-    if message.chat.id in admins:
-        add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
         markup.add(add_record_button)
 
-    if existing_record:
-        bot.send_message(message.chat.id,"Запись уже существует в базе данных.")
-    else:
-        with db_lock:
-            for hybrid, quantity in zip(data['Гибриды'], data['Количество']):
-                margin_found = [key for key, value in dic.margin_dict.items() if value == data['Поле']]
-                hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
+        if message.chat.id in admins:
+            add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+            markup.add(add_record_button)
 
-                cursor.execute(
-                    "INSERT INTO Data (ttn, ttn_date, start_time, end_time, departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    data['ТТН'], ttn_date, start_time, end_time, departure_time,
-                    margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
-                    dic.users_data.get(message.chat.id)
-                )
-            conn.commit()
+        if existing_record:
+            bot.send_message(message.chat.id,"Запись уже существует в базе данных.")
+        else:
+            with db_lock:
+                for hybrid, quantity in zip(data['Гибриды'], data['Количество']):
+                    margin_found = [key for key, value in dic.margin_dict.items() if value == data['Поле']]
+                    hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
 
-            bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
+                    cursor.execute(
+                        "INSERT INTO Data (ttn, ttn_date, car, car_number, trailer_number, start_time, end_time, "
+                        "departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        data['ТТН'], ttn_date, data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
+                        end_time, departure_time,
+                        margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
+                        dic.users_data.get(message.chat.id)
+                    )
+                conn.commit()
+
+                bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
 
 
 if __name__ == "__main__":
