@@ -1,5 +1,4 @@
 import time
-
 import requests
 import telebot
 import pyodbc
@@ -13,7 +12,7 @@ import createExcel
 
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config2.ini')
 
 bot = telebot.TeleBot(config['DATABASE']['token'])
 
@@ -76,9 +75,9 @@ def create_table_if_not_exists():
     conn.commit()
 
 def validate_time(tm):
-    pattern = r'^\d{1,2}:\d{2}$'
+    pattern = r'^\d{1,2}\.\d{2}$'
     if re.match(pattern, tm):
-        hours, minutes = map(int, tm.split(':'))
+        hours, minutes = map(int, tm.split('.'))
         if 0 <= hours <= 23 and 0 <= minutes <= 59:
             return True
     return False
@@ -200,6 +199,16 @@ def get_car_name(message):
         reset(message)
 
 
+def get_another_car_name(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        user_data[message.chat.id]['Авто'] = message.text.upper()
+        bot.send_message(message.chat.id, f"Введите номер автомобиля {user_data[message.chat.id]['Авто']}"
+                                               f" в формате ХХ1111ХХ: ")
+        bot.register_next_step_handler(message, get_car_number)
+    else:
+        reset(message)
+
+
 def get_car_number(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         car_number = message.text.upper()
@@ -275,10 +284,10 @@ def get_date(message, first):
 def get_loading_start_time(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         if validate_time(message.text):
-            user_data[message.chat.id]['НачалоПогрузки'] = user_data[message.chat.id]['Дата1'] + " " + message.text
+            user_data[message.chat.id]['НачалоПогрузки'] = user_data[message.chat.id]['Дата1'] + " " + message.text.replace('.', ':')
             ask_for_date(message, 2)
         else:
-            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12:00):")
+            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12.00):")
             bot.register_next_step_handler(message, get_loading_start_time)
     else:
         reset(message)
@@ -287,10 +296,10 @@ def get_loading_start_time(message):
 def get_loading_end_time(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         if validate_time(message.text):
-            user_data[message.chat.id]['КонецПогрузки'] = user_data[message.chat.id]['Дата2'] + " " + message.text
+            user_data[message.chat.id]['КонецПогрузки'] = user_data[message.chat.id]['Дата2'] + " " + message.text.replace('.', ':')
             ask_for_date(message, 3)
         else:
-            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12:00):")
+            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12.00):")
             bot.register_next_step_handler(message, get_loading_end_time)
     else:
         reset(message)
@@ -300,11 +309,11 @@ def get_departure_time(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         user_data[message.chat.id]['Количество'] = []
         if validate_time(message.text):
-            user_data[message.chat.id]['ВремяОтправки'] = user_data[message.chat.id]['Дата3'] + " " + message.text
+            user_data[message.chat.id]['ВремяОтправки'] = user_data[message.chat.id]['Дата3'] + " " + message.text.replace('.', ':')
             bot.send_message(message.chat.id, "Выберите номер поля:",
                              reply_markup=create_field_buttons())
         else:
-            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12:00):")
+            bot.send_message(message.chat.id, "Неправильный формат времени. Попробуйте снова (пример: 12.00):")
             bot.register_next_step_handler(message, get_departure_time)
     else:
         reset(message)
@@ -480,12 +489,17 @@ def handle_request(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("car_"))
 def handle_car(call):
     if not user_steps[call.message.chat.id]['step']:
-        user_steps[call.message.chat.id]['step'].append(1)
-        car = call.data.split("_", 1)[1]
-        user_data[call.message.chat.id]['Авто'] = car.upper()
-        bot.send_message(call.message.chat.id, f"Введите номер автомобиля {user_data[call.message.chat.id]['Авто']}"
-                                               f" в формате ХХ1111ХХ: ")
-        bot.register_next_step_handler(call.message, get_car_number)
+        if call.data == "car_another":
+            user_steps[call.message.chat.id]['step'].append(1)
+            bot.send_message(call.message.chat.id, "Введите марку автомобиля:")
+            bot.register_next_step_handler(call.message, get_another_car_name)
+        else:
+            user_steps[call.message.chat.id]['step'].append(1)
+            car = call.data.split("_", 1)[1]
+            user_data[call.message.chat.id]['Авто'] = car.upper()
+            bot.send_message(call.message.chat.id, f"Введите номер автомобиля {user_data[call.message.chat.id]['Авто']}"
+                                                   f" в формате ХХ1111ХХ: ")
+            bot.register_next_step_handler(call.message, get_car_number)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("trailer_"))
@@ -505,10 +519,9 @@ def handle_trailer(call):
 def check_date_choice(call):
     if call.data == "date_yes_1" and check_steps(call.message, 3):
         user_steps[call.message.chat.id]['step'].append(3)
-        print(user_steps[call.message.chat.id]['step'])
         user_data[call.message.chat.id]['Дата1'] = datetime.now().strftime('%d.%m.%Y')
         bot.send_message(call.message.chat.id, f"Дата начала погрузки - {user_data[call.message.chat.id]['Дата1']}.")
-        bot.send_message(call.message.chat.id, "Введите время начала погрузки (пример: 9:30):")
+        bot.send_message(call.message.chat.id, "Введите время начала погрузки (пример: 9.30):")
         bot.register_next_step_handler(call.message, get_loading_start_time)
     elif call.data == "date_no_1":
         bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
@@ -518,7 +531,7 @@ def check_date_choice(call):
         user_steps[call.message.chat.id]['step'].append(4)
         user_data[call.message.chat.id]['Дата2'] = datetime.now().strftime('%d.%m.%Y')
         bot.send_message(call.message.chat.id, f"Дата конца погрузки {user_data[call.message.chat.id]['Дата2']}.")
-        bot.send_message(call.message.chat.id, "Введите время конца погрузки (пример: 9:30):")
+        bot.send_message(call.message.chat.id, "Введите время конца погрузки (пример: 9.30):")
         bot.register_next_step_handler(call.message, get_loading_end_time)
     elif call.data == "date_no_2":
         bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
@@ -528,7 +541,7 @@ def check_date_choice(call):
         user_steps[call.message.chat.id]['step'].append(5)
         user_data[call.message.chat.id]['Дата3'] = datetime.now().strftime('%d.%m.%Y')
         bot.send_message(call.message.chat.id, f"Дата отгрузки - {user_data[call.message.chat.id]['Дата3']}.")
-        bot.send_message(call.message.chat.id, "Введите время отправки (пример: 9:30):")
+        bot.send_message(call.message.chat.id, "Введите время отправки (пример: 9.30):")
         bot.register_next_step_handler(call.message, get_departure_time)
     elif call.data == "date_no_3":
         bot.send_message(call.message.chat.id, "Введите дату (ДД.ММ.ГГГГ):")
@@ -588,7 +601,7 @@ def confirm_data(message):
         "<b>Все ли заполнено правильно?</b>\n\n"
         f"<b>ТТН:</b> {user_data[message.chat.id]['ТТН']}"
         f"\n<b>Дата ТТН:</b> {user_data[message.chat.id]['ТТНДата']}"
-        f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'].upper()}"
+        f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'][0].upper()}"
         f"\n<b>Номер автомобиля:</b> {user_data[message.chat.id]['CarNumber']}"
         f"\n<b>Номер прицепа:</b> {user_data[message.chat.id]['TrailerNumber']}"
         f"\n<b>Начало погрузки:</b> {user_data[message.chat.id]['НачалоПогрузки']}"
@@ -685,7 +698,7 @@ def save_data_to_db(data, message):
 
                     bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
             except Exception as ex:
-                bot.send_message(message.chat.id, f"Не удалось записать в базу! Ошибка: {ex}", reply_markup=markup)
+                bot.send_message(message.chat.id, f"Не удалось записать в базу!", reply_markup=markup)
                 bot.send_message(7178651151, f"Не удалось записать в базу!\nПользователь: {message.chat.id}\nОшибка: {ex}")
 
 
