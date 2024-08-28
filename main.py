@@ -606,7 +606,7 @@ def confirm_data(message):
         "<b>Все ли заполнено правильно?</b>\n\n"
         f"<b>ТТН:</b> {user_data[message.chat.id]['ТТН']}"
         f"\n<b>Дата ТТН:</b> {user_data[message.chat.id]['ТТНДата']}"
-        f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'][0].upper()}"
+        f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'].upper()}"
         f"\n<b>Номер автомобиля:</b> {user_data[message.chat.id]['CarNumber']}"
         f"\n<b>Номер прицепа:</b> {user_data[message.chat.id]['TrailerNumber']}"
         f"\n<b>Начало погрузки:</b> {user_data[message.chat.id]['НачалоПогрузки']}"
