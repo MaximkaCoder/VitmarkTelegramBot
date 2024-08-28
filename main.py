@@ -1,3 +1,6 @@
+import time
+
+import requests
 import telebot
 import pyodbc
 import re
@@ -682,4 +685,14 @@ def save_data_to_db(data, message):
 
 if __name__ == "__main__":
     create_table_if_not_exists()
-    bot.polling(none_stop=True)
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except requests.exceptions.ReadTimeout:
+            # bot.send_message(7178651151, "Плохое качество связи")
+            print("Плохое качество связи")
+            time.sleep(5)  # задержка перед перезапуском
+        except Exception as ex:
+            # bot.send_message(7178651151, f"Бот упал с ошибкой: {ex}")
+            print(f"Бот упал с ошибкой: {ex}")
+            time.sleep(5)  # задержка перед перезапуском

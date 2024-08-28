@@ -17,7 +17,8 @@ def get_data_from_db(conn):
         field, 
         hybrid, 
         quantity,
-        owner
+        owner,
+        processed
     FROM Data
     """
 
@@ -36,7 +37,7 @@ def create_excel(df):
     df.columns = [
         'ТТН', 'Дата ТТН', 'Марка автомобиля', 'Номер автомобиля', 'Номер прицепа', 'Дата начала погрузки',
         'Дата конца погрузки', 'Дата отправки',
-        'Поле', 'Гибрид', 'Количество(кг)', 'Исполнитель'
+        'Поле', 'Гибрид', 'Количество(кг)', 'Исполнитель', 'Обработано'
     ]
 
     df.to_excel(writer, index=False, startrow=1, header=False)
