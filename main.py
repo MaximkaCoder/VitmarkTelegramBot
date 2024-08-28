@@ -657,23 +657,27 @@ def save_data_to_db(data, message):
         if existing_record:
             bot.send_message(message.chat.id,"Запись уже существует в базе данных.")
         else:
-            with db_lock:
-                for hybrid, quantity in zip(data['Гибриды'], data['Количество']):
-                    margin_found = [key for key, value in dic.margin_dict.items() if value == data['Поле']]
-                    hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
+            try:
+                with db_lock:
+                    for hybrid, quantity in zip(data['Гибриды'], data['Количество']):
+                        margin_found = [key for key, value in dic.margin_dict.items() if value == data['Поле']]
+                        hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
 
-                    cursor.execute(
-                        "INSERT INTO Data (ttn, ttn_date, car, car_number, trailer_number, start_time, end_time, "
-                        "departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        data['ТТН'], ttn_date, data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
-                        end_time, departure_time,
-                        margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
-                        dic.users_data.get(message.chat.id)
-                    )
-                conn.commit()
+                        cursor.execute(
+                            "INSERT INTO Data (ttn, ttn_date, car, car_number, trailer_number, start_time, end_time, "
+                            "departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            data['ТТН'], ttn_date, data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
+                            end_time, departure_time,
+                            margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
+                            dic.users_data.get(message.chat.id)
+                        )
+                    conn.commit()
 
-                bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
+                    bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
+            except Exception as ex:
+                bot.send_message(message.chat.id, f"Не удалось записать в базу! Ошибка: {ex}", reply_markup=markup)
+                bot.send_message(7178651151, f"Не удалось записать в базу!\nПользователь: {message.chat.id}\nОшибка: {ex}")
 
 
 if __name__ == "__main__":
