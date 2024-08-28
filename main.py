@@ -713,10 +713,8 @@ if __name__ == "__main__":
         try:
             bot.polling(none_stop=True)
         except requests.exceptions.ReadTimeout:
-            # bot.send_message(7178651151, "Плохое качество связи")
-            print("Плохое качество связи")
+            bot.send_message(7178651151, "Плохое качество связи")
             time.sleep(5)  # задержка перед перезапуском
         except Exception as ex:
-            # bot.send_message(7178651151, f"Бот упал с ошибкой: {ex}")
-            print(f"Бот упал с ошибкой: {ex}")
+            bot.send_message(7178651151, f"Бот упал с ошибкой: {ex}")
             time.sleep(5)  # задержка перед перезапуском
