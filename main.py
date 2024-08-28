@@ -13,7 +13,7 @@ import createExcel
 
 
 config = configparser.ConfigParser()
-config.read('config2.ini')
+config.read('config.ini')
 
 bot = telebot.TeleBot(config['DATABASE']['token'])
 
