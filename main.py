@@ -113,10 +113,12 @@ def start(message):
         bot.send_message(message.chat.id, "Ваш запрос отправлен администратору! Ожидайте!")
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
-        markup.add(add_record_button)
 
-        if user_id in admins:
+        if user_id in dic.superAdmin_data or user_id in dic.master_data:
+            add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
+            markup.add(add_record_button)
+
+        if user_id in dic.superAdmin_data or user_id not in dic.master_data:
             add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
             markup.add(add_record_button)
 
@@ -158,11 +160,14 @@ def reset(message):
         user_data.pop(message.chat.id)
 
     bot.send_message(message.chat.id, "Добавление записи отменено!")
+    user_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
-    markup.add(add_record_button)
 
-    if message.chat.id in admins:
+    if user_id in dic.superAdmin_data or user_id in dic.master_data:
+        add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
+        markup.add(add_record_button)
+
+    if user_id in dic.superAdmin_data or user_id not in dic.master_data:
         add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
         markup.add(add_record_button)
 
