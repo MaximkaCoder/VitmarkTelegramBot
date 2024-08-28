@@ -13,7 +13,7 @@ import createExcel
 
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config2.ini')
 
 bot = telebot.TeleBot(config['DATABASE']['token'])
 
@@ -28,7 +28,7 @@ cursor = conn.cursor()
 db_lock = threading.Lock()
 user_data = {}
 user_steps = {}
-admins = [601442777, 7178651151, 5786418791] # Березной, Смаль, Афонькина
+admins = [601442777, 7178651151, 5786418791, 7244779387] # Березной, Смаль, Афонькина, Биндич
 
 
 # Функция для создания таблицы, если она не существует
@@ -75,10 +75,10 @@ def create_table_if_not_exists():
     cursor.execute(create_table_users)
     conn.commit()
 
-def validate_time(time):
+def validate_time(tm):
     pattern = r'^\d{1,2}:\d{2}$'
-    if re.match(pattern, time):
-        hours, minutes = map(int, time.split(':'))
+    if re.match(pattern, tm):
+        hours, minutes = map(int, tm.split(':'))
         if 0 <= hours <= 23 and 0 <= minutes <= 59:
             return True
     return False
@@ -582,17 +582,22 @@ def confirm_data(message):
     ]
     markup.add(*row)
     markup.add(types.InlineKeyboardButton("Удалить запись", callback_data="confirm_delete"))
-    bot.send_message(message.chat.id, "Все ли заполнено правильно?\n\n"
-                                      f"ТТН: {user_data[message.chat.id]['ТТН']}"
-                                      f"\nДата ТТН: {user_data[message.chat.id]['ТТНДата']}"
-                                      f"\nМарка автомобиля: {user_data[message.chat.id]['Авто'].upper()}"
-                                      f"\nНомер автомобиля: {user_data[message.chat.id]['CarNumber']}"
-                                      f"\nНомер прицепа: {user_data[message.chat.id]['TrailerNumber']}"
-                                      f"\nНачало погрузки: {user_data[message.chat.id]['НачалоПогрузки']}"
-                                      f"\nКонец погрузки: {user_data[message.chat.id]['КонецПогрузки']}"
-                                      f"\nВремя отправки: {user_data[message.chat.id]['ВремяОтправки']}"
-                                      f"\nПоле: {user_data[message.chat.id]['Поле']}"
-                                      f"\nГибриды и количество: \n{hybrid_info}", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "<b>Все ли заполнено правильно?</b>\n\n"
+        f"<b>ТТН:</b> {user_data[message.chat.id]['ТТН']}"
+        f"\n<b>Дата ТТН:</b> {user_data[message.chat.id]['ТТНДата']}"
+        f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'].upper()}"
+        f"\n<b>Номер автомобиля:</b> {user_data[message.chat.id]['CarNumber']}"
+        f"\n<b>Номер прицепа:</b> {user_data[message.chat.id]['TrailerNumber']}"
+        f"\n<b>Начало погрузки:</b> {user_data[message.chat.id]['НачалоПогрузки']}"
+        f"\n<b>Конец погрузки:</b> {user_data[message.chat.id]['КонецПогрузки']}"
+        f"\n<b>Время отправки:</b> {user_data[message.chat.id]['ВремяОтправки']}"
+        f"\n<b>Поле:</b> {user_data[message.chat.id]['Поле']}"
+        f"\n<b>Гибриды и количество:</b> \n{hybrid_info}",
+        reply_markup=markup,
+        parse_mode='HTML'
+    )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
