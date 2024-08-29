@@ -742,7 +742,7 @@ def save_data_to_db(data, message):
                         cursor.execute(
                             "INSERT INTO Data (ttn, ttn_date, fullName, typeDrive, car, car_number, trailer_number, start_time, end_time, "
                             "departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                             data['ТТН'], ttn_date, data['ФИО'], data['ТипПеревозки'], data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
                             end_time, departure_time,
                             margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
