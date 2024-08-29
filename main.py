@@ -187,6 +187,7 @@ def get_ttn(message):
             if existing_ttn:
                 bot.send_message(message.chat.id, "Запись с таким ТТН уже есть в базе!", reply_markup=markup)
             else:
+                bot.send_message(-4584764861, message.text)
                 user_data[message.chat.id]['ТТН'] = message.text
                 get_car_name(message)
         else:
@@ -515,7 +516,7 @@ def handle_trailer(call):
         bot.register_next_step_handler(call.message, get_trailer_number)
     elif call.data == "trailer_no" and check_steps(call.message, 2):
         user_steps[call.message.chat.id]['step'].append(2)
-        user_data[call.message.chat.id]['TrailerNumber'] = "Прицеп отсутствует"
+        user_data[call.message.chat.id]['TrailerNumber'] = ""
         ask_for_date(call.message, 1)
 
 
