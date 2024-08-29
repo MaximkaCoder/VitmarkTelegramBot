@@ -482,8 +482,8 @@ def create_type_buttons():
     markup = types.InlineKeyboardMarkup()
 
     row = [
-        types.InlineKeyboardButton("СОБСТВЕННЫЙ", callback_data="type_hired"),
-        types.InlineKeyboardButton("НАЁМНЫЙ", callback_data="type_own")
+        types.InlineKeyboardButton("НАЁМНЫЙ", callback_data="type_hired"),
+        types.InlineKeyboardButton("СОБСТВЕННЫЙ", callback_data="type_own")
     ]
 
     markup.row(*row)
