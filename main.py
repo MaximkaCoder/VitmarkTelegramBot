@@ -28,6 +28,7 @@ db_lock = threading.Lock()
 user_data = {}
 user_steps = {}
 admins = [601442777, 7178651151, 5786418791, 7244779387] # Березной, Смаль, Афонькина, Биндич
+group_id = "-4584764861"
 
 
 # Функция для создания таблицы, если она не существует
@@ -122,7 +123,15 @@ def start(message):
             add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
             markup.add(add_record_button)
 
-        bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
+        if user_id not in dic.superAdmin_data or user_id not in dic.master_data:
+            bot.send_message(message.chat.id, "Нажмите 'СГЕНЕРИРОВАТЬ ОТЧЁТ', чтобы начать.", reply_markup=markup)
+        else:
+            bot.send_message(message.chat.id, "Нажмите 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
+
+
+@bot.message_handler(commands=['get'])
+def get_group_id(message):
+    bot.send_message(message.chat.id, message.chat.id)
 
 
 @bot.message_handler(func=lambda message: message.text == "ДОБАВИТЬ ЗАПИСЬ")
@@ -171,7 +180,10 @@ def reset(message):
         add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
         markup.add(add_record_button)
 
-    bot.send_message(message.chat.id, "Привет! Нажми 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
+    if user_id not in dic.superAdmin_data or user_id not in dic.master_data:
+        bot.send_message(message.chat.id, "Нажмите 'СГЕНЕРИРОВАТЬ ОТЧЁТ', чтобы начать.", reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, "Нажмите 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
 
 
 def get_ttn(message):
@@ -187,7 +199,6 @@ def get_ttn(message):
             if existing_ttn:
                 bot.send_message(message.chat.id, "Запись с таким ТТН уже есть в базе!", reply_markup=markup)
             else:
-                bot.send_message(-4584764861, message.text)
                 user_data[message.chat.id]['ТТН'] = message.text
                 get_car_name(message)
         else:
@@ -701,6 +712,25 @@ def save_data_to_db(data, message):
                             dic.users_data.get(message.chat.id)
                         )
                     conn.commit()
+                    hybrid_info = "\n".join([f"{h}: {q} килограмм" for h, q in
+                                             zip(user_data[message.chat.id]['Гибриды'],
+                                                 user_data[message.chat.id]['Количество'])])
+
+                    mess = f"""
+                    ТТН: {data['ТТН']}
+Дата ТТН: {ttn_date}
+Марка автомобиля: {data['Авто'].upper()}
+Номер автомобиля: {data['CarNumber']}
+Номер прицепа: {data['TrailerNumber']}
+Начало погрузки: {start_time}
+Конец погрузки: {end_time}
+Время отправки: {departure_time}
+Поле: {user_data[message.chat.id]['Поле']}
+Гибриды и количество: \n{hybrid_info}
+"""
+
+                    bot.send_message(int(group_id), mess)
+
 
                     bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
             except Exception as ex:
