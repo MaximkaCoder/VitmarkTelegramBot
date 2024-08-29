@@ -759,8 +759,8 @@ def save_data_to_db(data, message):
                     mess = f"""
                     ТТН: {data['ТТН']}
 Дата ТТН: {ttn_date}
-Фио водителя: {user_data[message.chat.id]['ФИО']}"
-Тип перевозки: {user_data[message.chat.id]['ТипПеревозки']}"
+Фио водителя: {user_data[message.chat.id]['ФИО']}
+Тип перевозки: {user_data[message.chat.id]['ТипПеревозки']}
 Марка автомобиля: {data['Авто'].upper()}
 Номер автомобиля: {data['CarNumber']}
 Номер прицепа: {data['TrailerNumber']}
