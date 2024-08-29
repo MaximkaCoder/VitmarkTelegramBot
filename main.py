@@ -28,7 +28,7 @@ db_lock = threading.Lock()
 user_data = {}
 user_steps = {}
 admins = [601442777, 7178651151, 5786418791, 7244779387] # Березной, Смаль, Афонькина, Биндич
-group_id = "-4584764861"
+group_id = "-1001958723261"
 
 
 # Функция для создания таблицы, если она не существует
@@ -42,6 +42,8 @@ def create_table_if_not_exists():
         CREATE TABLE Data (
             ttn NVARCHAR(10),
             ttn_date DATE,
+            fullName NVARCHAR(70),
+            typeDrive NVARCHAR(20),
             car NVARCHAR(20),
             car_number NVARCHAR(8),
             trailer_number NVARCHAR(20),
@@ -123,7 +125,7 @@ def start(message):
             add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
             markup.add(add_record_button)
 
-        if user_id not in dic.superAdmin_data or user_id not in dic.master_data:
+        if user_id not in dic.superAdmin_data and user_id not in dic.master_data:
             bot.send_message(message.chat.id, "Нажмите 'СГЕНЕРИРОВАТЬ ОТЧЁТ', чтобы начать.", reply_markup=markup)
         else:
             bot.send_message(message.chat.id, "Нажмите 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
@@ -180,7 +182,7 @@ def reset(message):
         add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
         markup.add(add_record_button)
 
-    if user_id not in dic.superAdmin_data or user_id not in dic.master_data:
+    if user_id not in dic.superAdmin_data and user_id not in dic.master_data:
         bot.send_message(message.chat.id, "Нажмите 'СГЕНЕРИРОВАТЬ ОТЧЁТ', чтобы начать.", reply_markup=markup)
     else:
         bot.send_message(message.chat.id, "Нажмите 'ДОБАВИТЬ ЗАПИСЬ', чтобы начать.", reply_markup=markup)
@@ -200,17 +202,29 @@ def get_ttn(message):
                 bot.send_message(message.chat.id, "Запись с таким ТТН уже есть в базе!", reply_markup=markup)
             else:
                 user_data[message.chat.id]['ТТН'] = message.text
-                get_car_name(message)
+                get_driver_name(message)
         else:
             bot.send_message(message.chat.id, "Неверный формат ТТН!")
             handle_add_record(message)
     else:
         reset(message)
 
+def get_driver_name(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        bot.send_message(message.chat.id, "Введите ФИО водителя:")
+        bot.register_next_step_handler(message, get_type_drive)
+    else:
+        reset(message)
+
+
+def get_type_drive(message):
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        user_data[message.chat.id]['ФИО'] = message.text
+        bot.send_message(message.chat.id, "Выберите тип перевозки:", reply_markup=create_type_buttons())
+
 
 def get_car_name(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
-        user_data[message.chat.id]['Авто'] = []
         bot.send_message(message.chat.id, "Выберите марку машины:", reply_markup=create_car_buttons())
     else:
         reset(message)
@@ -464,6 +478,18 @@ def create_car_buttons():
     return markup
 
 
+def create_type_buttons():
+    markup = types.InlineKeyboardMarkup()
+
+    row = [
+        types.InlineKeyboardButton("СОБСТВЕННЫЙ", callback_data="type_hired"),
+        types.InlineKeyboardButton("НАЁМНЫЙ", callback_data="type_own")
+    ]
+
+    markup.row(*row)
+    return markup
+
+
 def create_car_num_buttons():
     markup = types.InlineKeyboardMarkup()
 
@@ -501,6 +527,15 @@ def handle_request(call):
             bot.send_message(user_id, "Вам предоставлен доступ!", reply_markup=markup)
     elif call.data.startswith("reject_"):
         bot.send_message(call.message.chat.id, "Запрос отклонен.")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("type_"))
+def handle_type(call):
+    if call.data == "type_hired":
+        user_data[call.message.chat.id]['ТипПеревозки'] = "Наёмный"
+    elif call.data == "type_own":
+        user_data[call.message.chat.id]['ТипПеревозки'] = "Собственный"
+    get_car_name(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("car_"))
@@ -618,6 +653,8 @@ def confirm_data(message):
         "<b>Все ли заполнено правильно?</b>\n\n"
         f"<b>ТТН:</b> {user_data[message.chat.id]['ТТН']}"
         f"\n<b>Дата ТТН:</b> {user_data[message.chat.id]['ТТНДата']}"
+        f"\n<b>Фио водителя</b>: {user_data[message.chat.id]['ФИО']}"
+        f"\n<b>Тип перевозки</b>: {user_data[message.chat.id]['ТипПеревозки']}"
         f"\n<b>Марка автомобиля:</b> {user_data[message.chat.id]['Авто'].upper()}"
         f"\n<b>Номер автомобиля:</b> {user_data[message.chat.id]['CarNumber']}"
         f"\n<b>Номер прицепа:</b> {user_data[message.chat.id]['TrailerNumber']}"
@@ -703,15 +740,18 @@ def save_data_to_db(data, message):
                         hybrid_found = [key for key, value in dic.hybrid_dict.items() if value == hybrid]
 
                         cursor.execute(
-                            "INSERT INTO Data (ttn, ttn_date, car, car_number, trailer_number, start_time, end_time, "
+                            "INSERT INTO Data (ttn, ttn_date, fullName, typeDrive, car, car_number, trailer_number, start_time, end_time, "
                             "departure_time, field_code, field, hybrid_code, hybrid, quantity, processed, owner) "
                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                            data['ТТН'], ttn_date, data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
+                            data['ТТН'], ttn_date, data['ФИО'], data['ТипПеревозки'], data['Авто'], data['CarNumber'], data['TrailerNumber'], start_time,
                             end_time, departure_time,
                             margin_found[0], data['Поле'], hybrid_found[0], hybrid, quantity, data['Обработано'],
                             dic.users_data.get(message.chat.id)
                         )
                     conn.commit()
+
+                    bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
+
                     hybrid_info = "\n".join([f"{h}: {q} килограмм" for h, q in
                                              zip(user_data[message.chat.id]['Гибриды'],
                                                  user_data[message.chat.id]['Количество'])])
@@ -719,6 +759,8 @@ def save_data_to_db(data, message):
                     mess = f"""
                     ТТН: {data['ТТН']}
 Дата ТТН: {ttn_date}
+Фио водителя: {user_data[message.chat.id]['ФИО']}"
+Тип перевозки: {user_data[message.chat.id]['ТипПеревозки']}"
 Марка автомобиля: {data['Авто'].upper()}
 Номер автомобиля: {data['CarNumber']}
 Номер прицепа: {data['TrailerNumber']}
@@ -730,9 +772,6 @@ def save_data_to_db(data, message):
 """
 
                     bot.send_message(int(group_id), mess)
-
-
-                    bot.send_message(message.chat.id, "Запись внесена в базу!", reply_markup=markup)
             except Exception as ex:
                 bot.send_message(message.chat.id, f"Не удалось записать в базу!", reply_markup=markup)
                 bot.send_message(7178651151, f"Не удалось записать в базу!\nПользователь: {message.chat.id}\nОшибка: {ex}")
