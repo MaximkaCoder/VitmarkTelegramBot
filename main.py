@@ -29,6 +29,7 @@ user_data = {}
 user_steps = {}
 admins = [601442777, 7178651151, 5786418791, 7244779387] # Березной, Смаль, Афонькина, Биндич
 group_id = "-1001958723261"
+# group_id = "-4584764861"
 
 
 # Функция для создания таблицы, если она не существует
@@ -270,14 +271,17 @@ def ask_for_date(message, first: int):
 
 
 def get_trailer_number(message):
-    trailer_number = message.text.upper()
+    if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
+        trailer_number = message.text.upper()
 
-    if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', trailer_number):
-        user_data[message.chat.id]['TrailerNumber'] = trailer_number
-        ask_for_date(message, 1)
+        if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', trailer_number):
+            user_data[message.chat.id]['TrailerNumber'] = trailer_number
+            ask_for_date(message, 1)
+        else:
+            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
+            bot.register_next_step_handler(message, get_trailer_number)
     else:
-        bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
-        bot.register_next_step_handler(message, get_trailer_number)
+        reset(message)
 
 
 
@@ -756,10 +760,13 @@ def save_data_to_db(data, message):
                                              zip(user_data[message.chat.id]['Гибриды'],
                                                  user_data[message.chat.id]['Количество'])])
 
+                    if data['TrailerNumber'] == "":
+                        data['TrailerNumber'] = "нет"
+
                     mess = f"""
                     ТТН: {data['ТТН']}
 Дата ТТН: {ttn_date}
-Фио водителя: {user_data[message.chat.id]['ФИО']}
+ФИО водителя: {user_data[message.chat.id]['ФИО']}
 Тип перевозки: {user_data[message.chat.id]['ТипПеревозки']}
 Марка автомобиля: {data['Авто'].upper()}
 Номер автомобиля: {data['CarNumber']}
@@ -769,6 +776,8 @@ def save_data_to_db(data, message):
 Время отправки: {departure_time}
 Поле: {user_data[message.chat.id]['Поле']}
 Гибриды и количество: \n{hybrid_info}
+
+Исполнитель: {dic.users_data.get(message.chat.id)}
 """
 
                     bot.send_message(int(group_id), mess)
