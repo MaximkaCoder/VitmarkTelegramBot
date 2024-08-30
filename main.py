@@ -458,7 +458,7 @@ def create_car_buttons():
 
     row = [
         types.InlineKeyboardButton("MAN", callback_data=f"car_man"),
-        types.InlineKeyboardButton("КАМАЗ", callback_data=f"car_kamaz"),
+        types.InlineKeyboardButton("КАМАЗ", callback_data=f"car_камаз"),
         types.InlineKeyboardButton("DAF", callback_data=f"car_daf")
     ]
 
