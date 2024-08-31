@@ -235,7 +235,7 @@ def get_another_car_name(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         user_data[message.chat.id]['Авто'] = message.text.upper()
         bot.send_message(message.chat.id, f"Введите номер автомобиля {user_data[message.chat.id]['Авто']}"
-                                               f" в формате ХХ1111ХХ: ")
+                                               f" в формате ХХ1111ХХ или 11111ХХ: ")
         bot.register_next_step_handler(message, get_car_number)
     else:
         reset(message)
@@ -245,11 +245,11 @@ def get_car_number(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         car_number = message.text.upper()
 
-        if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', car_number):
+        if re.match(r'^([А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}|\d{5}[А-ЯA-Z]{2})$', car_number):
             user_data[message.chat.id]['CarNumber'] = car_number
             bot.send_message(message.chat.id, "Есть ли прицеп?", reply_markup=create_car_num_buttons())
         else:
-            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
+            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ  или 11111ХХ. \nПопробуйте снова:")
             bot.register_next_step_handler(message, get_car_number)
     else:
         reset(message)
@@ -274,11 +274,11 @@ def get_trailer_number(message):
     if message.text != "ОТМЕНИТЬ ДОБАВЛЕНИЕ ЗАПИСИ":
         trailer_number = message.text.upper()
 
-        if re.match(r'^[А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}$', trailer_number):
+        if re.match(r'^([А-ЯA-Z]{2}\d{4}[А-ЯA-Z]{2}|\d{5}[А-ЯA-Z]{2})$', trailer_number):
             user_data[message.chat.id]['TrailerNumber'] = trailer_number
             ask_for_date(message, 1)
         else:
-            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ. \nПопробуйте снова:")
+            bot.send_message(message.chat.id, "Некорректный формат номера. Формат номера: ХХ1111ХХ или 11111ХХ. \nПопробуйте снова:")
             bot.register_next_step_handler(message, get_trailer_number)
     else:
         reset(message)
@@ -562,7 +562,7 @@ def handle_car(call):
 def handle_trailer(call):
     if call.data == "trailer_yes" and check_steps(call.message, 2):
         user_steps[call.message.chat.id]['step'].append(2)
-        bot.send_message(call.message.chat.id, "Введите номер прицепа в формате ХХ1111ХХ:")
+        bot.send_message(call.message.chat.id, "Введите номер прицепа в формате ХХ1111ХХ или 11111ХХ:")
         bot.register_next_step_handler(call.message, get_trailer_number)
     elif call.data == "trailer_no" and check_steps(call.message, 2):
         user_steps[call.message.chat.id]['step'].append(2)
