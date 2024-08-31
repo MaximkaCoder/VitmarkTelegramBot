@@ -554,7 +554,7 @@ def handle_car(call):
             car = call.data.split("_", 1)[1]
             user_data[call.message.chat.id]['Авто'] = car.upper()
             bot.send_message(call.message.chat.id, f"Введите номер автомобиля {user_data[call.message.chat.id]['Авто']}"
-                                                   f" в формате ХХ1111ХХ: ")
+                                                   f" в формате ХХ1111ХХ или 11111ХХ: ")
             bot.register_next_step_handler(call.message, get_car_number)
 
 
