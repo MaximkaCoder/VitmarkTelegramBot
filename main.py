@@ -421,6 +421,7 @@ def create_hybrid_buttons():
     ]
     row4 = [
         types.InlineKeyboardButton("Хайнц (Н5108)", callback_data=f"hybrid_Хайнц(Н5108)"),
+        types.InlineKeyboardButton("Sentosa", callback_data=f"hybrid_Sentosa"),
         types.InlineKeyboardButton("ЯГ8810F1", callback_data=f"hybrid_ЯГ8810F1")
     ]
 
