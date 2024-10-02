@@ -126,6 +126,10 @@ def start(message):
             add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
             markup.add(add_record_button)
 
+        if user_id in dic.superAdmin_data:
+            add_record_button = types.KeyboardButton("УДАЛИТЬ ЗАПИСЬ")
+            markup.add(add_record_button)
+
         if user_id not in dic.superAdmin_data and user_id not in dic.master_data:
             bot.send_message(message.chat.id, "Нажмите 'СГЕНЕРИРОВАТЬ ОТЧЁТ', чтобы начать.", reply_markup=markup)
         else:
@@ -787,6 +791,35 @@ def save_data_to_db(data, message):
                 bot.send_message(7178651151, f"Не удалось записать в базу!\nПользователь: {message.chat.id}\nОшибка: {ex}")
 
 
+def delete_ttn_from_db(ttn_value):
+    try:
+        query = "DELETE FROM Data WHERE ttn = ?"
+        cursor.execute(query, (ttn_value,))
+        conn.commit()
+        return cursor.rowcount  # Возвращает количество удалённых строк
+    except Exception as e:
+        print(f"Ошибка при удалении записей: {e}")
+        return 0
+
+
+@bot.message_handler(func=lambda message: message.text == "УДАЛИТЬ ЗАПИСЬ")
+def ask_for_ttn(message):
+    user_id = message.from_user.id
+    if user_id in admins:
+        msg = bot.send_message(message.chat.id, "Введите значение TTN для удаления:")
+        bot.register_next_step_handler(msg, process_ttn)
+
+
+def process_ttn(message):
+    ttn_value = message.text
+    deleted_count = delete_ttn_from_db(ttn_value)
+
+    if deleted_count > 0:
+        bot.send_message(message.chat.id, f"Удалено {deleted_count} записей с TTN = {ttn_value}.")
+    else:
+        bot.send_message(message.chat.id, "Записи с таким TTN не найдены.")
+
+
 if __name__ == "__main__":
     create_table_if_not_exists()
     while True:
@@ -794,7 +827,7 @@ if __name__ == "__main__":
             bot.polling(none_stop=True)
         except requests.exceptions.ReadTimeout:
             bot.send_message(7178651151, "Плохое качество связи")
-            time.sleep(5)  # задержка перед перезапуском
+            time.sleep(5)
         except Exception as ex:
             bot.send_message(7178651151, f"Бот упал с ошибкой: {ex}")
-            time.sleep(5)  # задержка перед перезапуском
+            time.sleep(5)
