@@ -176,7 +176,7 @@ def reset(message):
         user_data.pop(message.chat.id)
 
     bot.send_message(message.chat.id, "Добавление записи отменено!")
-    user_id = message.chat.id
+    user_id = message.from_user.id
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     if user_id in dic.superAdmin_data or user_id in dic.master_data:
@@ -185,6 +185,10 @@ def reset(message):
 
     if user_id in dic.superAdmin_data or user_id not in dic.master_data:
         add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
+        markup.add(add_record_button)
+
+    if user_id in dic.superAdmin_data:
+        add_record_button = types.KeyboardButton("УДАЛИТЬ ЗАПИСЬ")
         markup.add(add_record_button)
 
     if user_id not in dic.superAdmin_data and user_id not in dic.master_data:
@@ -731,9 +735,15 @@ def save_data_to_db(data, message):
         )
         existing_record = cursor.fetchone()
 
+        user_id = message.from_user.id
+
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         add_record_button = types.KeyboardButton("ДОБАВИТЬ ЗАПИСЬ")
         markup.add(add_record_button)
+
+        if user_id in dic.superAdmin_data:
+            add_record_button = types.KeyboardButton("УДАЛИТЬ ЗАПИСЬ")
+            markup.add(add_record_button)
 
         if message.chat.id in admins:
             add_record_button = types.KeyboardButton("СГЕНЕРИРОВАТЬ ОТЧЁТ")
